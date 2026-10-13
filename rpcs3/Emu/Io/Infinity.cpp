@@ -395,20 +395,6 @@ void usb_device_infinity::interrupt_transfer(u32 buf_size, u8* buf, u32 endpoint
 	transfer->expected_count = buf_size;
 	transfer->expected_result = HC_CC_NOERR;
 
-	if (endpoint == 0x81)
-	{
-		// Respond after FF command
-		transfer->expected_time = get_timestamp() + 1000;
-		std::optional<std::array<u8, 32>> response = g_infinitybase.pop_added_removed_response();
-		if (response)
-		{
-			memcpy(buf, response.value().data(), 0x20);
-		}
-		else if (!m_queries.empty())
-		{
-			memcpy(buf, m_queries.front().data(), 0x20);
-			m_queries.pop();
-		}
 	}
 	else if (endpoint == 0x01)
 	{
