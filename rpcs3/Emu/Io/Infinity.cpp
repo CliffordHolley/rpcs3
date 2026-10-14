@@ -395,6 +395,28 @@ void usb_device_infinity::interrupt_transfer(u32 buf_size, u8* buf, u32 endpoint
 	transfer->expected_count = buf_size;
 	transfer->expected_result = HC_CC_NOERR;
 
+	if (endpoint == 0x81)
+	{
+		// EXPERIMENT (not upstream): complete idle polls slowly instead of every 1ms.
+		// Replies and figure add/remove notifications still complete after 1ms as before.
+		// 8000us is a guess; the Skylanders portal emulation uses 22000us for its polls.
+		u64 delay_us = 8000;
+
+		std::optional<std::array<u8, 32>> response = g_infinitybase.pop_added_removed_response();
+		if (response)
+		{
+			delay_us = 1000;
+			memcpy(buf, response.value().data(), 0x20);
+		}
+		else if (!m_queries.empty())
+		{
+			delay_us = 1000;
+			memcpy(buf, m_queries.front().data(), 0x20);
+			m_queries.pop();
+		}
+
+		// Respond after FF command
+		transfer->expected_time = get_timestamp() + delay_us;
 	}
 	else if (endpoint == 0x01)
 	{
@@ -472,3 +494,4 @@ void usb_device_infinity::interrupt_transfer(u32 buf_size, u8* buf, u32 endpoint
 		m_queries.push(q_result);
 	}
 }
+
