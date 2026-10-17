@@ -3210,7 +3210,7 @@ void main_window::CreateConnects()
 
 	connect(ui->actionManage_Infinity_Base, &QAction::triggered, this, [this]
 	{
-		infinity_dialog* inf_dlg = infinity_dialog::get_dlg(this);
+		infinity_dialog* inf_dlg = infinity_dialog::get_dlg(this, m_gui_settings);
 		inf_dlg->show();
 	});
 

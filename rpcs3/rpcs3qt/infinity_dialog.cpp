@@ -3,6 +3,7 @@
 #include "Crypto/aes.h"
 #include "Crypto/sha1.h"
 #include "infinity_dialog.h"
+#include "gui_settings.h"
 #include "Emu/Io/Infinity.h"
 
 #include <QLabel>
@@ -569,17 +570,19 @@ figure_creator_dialog::figure_creator_dialog(QWidget* parent, u8 slot)
 			QMessageBox::warning(this, tr("Error converting value"), tr("Series number entered is invalid!"), QMessageBox::Ok);
 			return;
 		}
+		// Build the suggested file name in a separate variable, so the remembered folder stays a plain folder
+		QString suggested_path = s_last_figure_path;
 		const auto found_figure = list_figures.find(fig_num);
 		if (found_figure != list_figures.cend())
 		{
-			s_last_figure_path += QString::fromStdString(found_figure->second.second + ".bin");
+			suggested_path += QString::fromStdString(found_figure->second.second + ".bin");
 		}
 		else
 		{
-			s_last_figure_path += QString("Unknown(%1 %2).bin").arg(fig_num).arg(series);
+			suggested_path += QString("Unknown(%1 %2).bin").arg(fig_num).arg(series);
 		}
 
-		m_file_path = QFileDialog::getSaveFileName(this, tr("Create Figure File"), s_last_figure_path, tr("Infinity Figure (*.bin);;"));
+		m_file_path = QFileDialog::getSaveFileName(this, tr("Create Figure File"), suggested_path, tr("Infinity Figure (*.bin);;"));
 		if (m_file_path.isEmpty())
 		{
 			return;
@@ -712,9 +715,16 @@ QString figure_creator_dialog::get_file_path() const
 	return m_file_path;
 }
 
-infinity_dialog::infinity_dialog(QWidget* parent)
+infinity_dialog::infinity_dialog(QWidget* parent, std::shared_ptr<gui_settings> settings)
 	: QDialog(parent)
+	, m_gui_settings(std::move(settings))
 {
+	// Start in the folder that was used last time, even after RPCS3 was restarted
+	if (m_gui_settings && s_last_figure_path.isEmpty())
+	{
+		s_last_figure_path = m_gui_settings->GetValue(gui::fd_infinity_figure).toString();
+	}
+
 	setWindowTitle(tr("Infinity Manager"));
 	setObjectName("infinity_manager");
 	setAttribute(Qt::WA_DeleteOnClose);
@@ -761,12 +771,20 @@ infinity_dialog::~infinity_dialog()
 	inst = nullptr;
 }
 
-infinity_dialog* infinity_dialog::get_dlg(QWidget* parent)
+infinity_dialog* infinity_dialog::get_dlg(QWidget* parent, std::shared_ptr<gui_settings> settings)
 {
 	if (inst == nullptr)
-		inst = new infinity_dialog(parent);
+		inst = new infinity_dialog(parent, std::move(settings));
 
 	return inst;
+}
+
+void infinity_dialog::save_last_figure_path() const
+{
+	if (m_gui_settings)
+	{
+		m_gui_settings->SetValue(gui::fd_infinity_figure, s_last_figure_path);
+	}
 }
 
 void infinity_dialog::add_figure_slot(QVBoxLayout* vbox_group, QString name, u8 slot)
@@ -840,6 +858,7 @@ void infinity_dialog::create_figure(u8 slot)
 	figure_creator_dialog create_dlg(this, slot);
 	if (create_dlg.exec() == Accepted)
 	{
+		save_last_figure_path();
 		load_figure_path(slot, create_dlg.get_file_path());
 	}
 }
@@ -854,6 +873,7 @@ void infinity_dialog::load_figure(u8 slot)
 	}
 
 	s_last_figure_path = QFileInfo(file_path).absolutePath() + "/";
+	save_last_figure_path();
 
 	load_figure_path(slot, file_path);
 }

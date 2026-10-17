@@ -1,11 +1,14 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include "util/types.hpp"
 
 #include <QDialog>
 #include <QLineEdit>
 #include <QVBoxLayout>
+
+class gui_settings;
 
 class figure_creator_dialog : public QDialog
 {
@@ -27,9 +30,9 @@ class infinity_dialog : public QDialog
 	Q_OBJECT
 
 public:
-	explicit infinity_dialog(QWidget* parent);
+	explicit infinity_dialog(QWidget* parent, std::shared_ptr<gui_settings> settings);
 	~infinity_dialog();
-	static infinity_dialog* get_dlg(QWidget* parent);
+	static infinity_dialog* get_dlg(QWidget* parent, std::shared_ptr<gui_settings> settings);
 
 	infinity_dialog(infinity_dialog const&) = delete;
 	void operator=(infinity_dialog const&) = delete;
@@ -46,5 +49,7 @@ protected:
 
 private:
 	void add_figure_slot(QVBoxLayout* vbox_group, QString name, u8 slot);
+	void save_last_figure_path() const;
+	std::shared_ptr<gui_settings> m_gui_settings;
 	static infinity_dialog* inst;
 };
